@@ -79,11 +79,11 @@ func DoMetaCommand(buffer string) (MetaCommandResult, error) {
 		return MetaCommandUnrecognizedCommand, nil
 	}
 
-	return 1, errors.New("No fucking way")
+	return -1, errors.New("No fucking way")
 
 }
 
-func PrepareStatement(buffer string, statement Statement) PrepareResult {
+func PrepareStatement(buffer string, statement *Statement) PrepareResult {
 
 	if strings.HasPrefix(buffer, "insert") {
 		statement.Type = StatementInsert
@@ -96,6 +96,15 @@ func PrepareStatement(buffer string, statement Statement) PrepareResult {
 	}
 
 	return PrepareUnrecognizedStatement
+}
+
+func ExecuteStatement(statement *Statement) {
+	switch statement.Type {
+	case (StatementInsert):
+		fmt.Println("Insert logic")
+	case (StatementSelect):
+		fmt.Println("Select logic")
+	}
 }
 
 func main() {
@@ -115,13 +124,37 @@ func main() {
 	for {
 		input := <-inputChan
 
-		// FIXME: Empty buffer error
-		if string((*input)[0]) == "." {
-			CloseInputBuffer(inputBuffer)
-			close(inputChan)
-			os.Exit(0)
-		} else {
-			fmt.Printf("Unrecognized command '%s'.\ndb > ", *input)
+		if len(string(*input)) == 0 {
+			continue
 		}
+
+		if string((*input)[0]) == "." {
+
+			switch result, _ := DoMetaCommand(*inputBuffer.buffer); result {
+			case MetaCommandSuccess:
+				break
+			case MetaCommandUnrecognizedCommand:
+				fmt.Printf("Unrecognized command '%s'\ndb > ", *inputBuffer.buffer)
+				break
+
+			}
+		}
+
+		var statement Statement
+
+		switch prepareResult := PrepareStatement(*inputBuffer.buffer, &statement); prepareResult {
+
+		case (PrepareSuccess):
+			break
+		case (PrepareUnrecognizedStatement):
+			fmt.Printf("Unrecognized keyword at start of '%s'.\ndb > ", *inputBuffer.buffer)
+			continue
+
+		}
+
+		ExecuteStatement(&statement)
+		CloseInputBuffer(inputBuffer)
+		close(inputChan)
+		os.Exit(0)
 	}
 }
