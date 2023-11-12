@@ -2,11 +2,37 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"sync"
 )
+
+type MetaCommandResult int
+
+const (
+	MetaCommandSuccess MetaCommandResult = iota
+	MetaCommandUnrecognizedCommand
+)
+
+type PrepareResult int
+
+const (
+	PrepareSuccess PrepareResult = iota
+	PrepareUnrecognizedStatement
+)
+
+type StatementType int
+
+const (
+	StatementInsert StatementType = iota
+	StatementSelect
+)
+
+type Statement struct {
+	Type StatementType
+}
 
 type InputBuffer struct {
 	buffer       *string
@@ -45,6 +71,33 @@ func ReadInput(inputBuffer *InputBuffer, wg *sync.WaitGroup, inputChan chan *str
 
 }
 
+func DoMetaCommand(buffer string) (MetaCommandResult, error) {
+
+	if buffer == ".exit" {
+		os.Exit(0)
+	} else {
+		return MetaCommandUnrecognizedCommand, nil
+	}
+
+	return 1, errors.New("No fucking way")
+
+}
+
+func PrepareStatement(buffer string, statement Statement) PrepareResult {
+
+	if strings.HasPrefix(buffer, "insert") {
+		statement.Type = StatementInsert
+		return PrepareSuccess
+	}
+
+	if buffer == "select" {
+		statement.Type = StatementSelect
+		return PrepareSuccess
+	}
+
+	return PrepareUnrecognizedStatement
+}
+
 func main() {
 	inputBuffer := NewInputBuffer()
 	var wg sync.WaitGroup
@@ -62,7 +115,8 @@ func main() {
 	for {
 		input := <-inputChan
 
-		if *input == ".exit" {
+		// FIXME: Empty buffer error
+		if string((*input)[0]) == "." {
 			CloseInputBuffer(inputBuffer)
 			close(inputChan)
 			os.Exit(0)
